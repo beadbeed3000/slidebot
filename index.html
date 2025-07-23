@@ -1,27 +1,29 @@
 
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>AI-Powered Slide Generator</title>
+  <meta charset="UTF-8">
+  <title>Slide Generator</title>
   <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.11.1/dist/pptxgen.bundle.js"></script>
   <script src="https://unpkg.com/mammoth/mammoth.browser.min.js"></script>
   <style>
-    body { font-family: sans-serif; margin: 20px; }
+    body { font-family: sans-serif; margin: 20px; background: #f8f8f8; }
     textarea { width: 100%; height: 200px; }
-    .container { max-width: 800px; margin: auto; }
-    button { margin-top: 10px; padding: 10px 15px; }
+    .container { max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
+    button { margin-top: 10px; padding: 10px 20px; font-size: 16px; cursor: pointer; }
+    h2 { color: #333; }
   </style>
 </head>
 <body>
   <div class="container">
-    <h2>Create PowerPoint Slides from Outline or Word File1</h2>
+    <h2>Create PowerPoint Slides from Outline or Word File2</h2>
     <label><strong>Paste your outline below:</strong></label><br>
     <textarea id="outlineText" placeholder="Paste your outline here..."></textarea><br>
 
     <label><strong>Or upload a Word (.docx) file:</strong></label><br>
     <input type="file" id="uploadDocx" accept=".docx"><br><br>
 
-    <button onclick="generateSlides()">Generate PowerPoint</button>
+    <button id="generateBtn">Generate PowerPoint</button>
   </div>
 
   <script>
@@ -37,8 +39,7 @@
       reader.readAsArrayBuffer(event.target.files[0]);
     });
 
-    function generateSlides() {
-      const pptx = new PptxGenJS();
+    document.getElementById('generateBtn').addEventListener('click', function() {
       const rawText = document.getElementById("outlineText").value;
 
       if (!rawText.trim()) {
@@ -46,7 +47,8 @@
         return;
       }
 
-      const sections = rawText.split(/\n(?=\s*[IVXL]+\.)/); // Split on roman numerals like I., II., III.
+      const pptx = new PptxGenJS();
+      const sections = rawText.split(/\n(?=\s*[IVXL]+\.)/); // Split on Roman numerals
 
       let slideCount = 0;
 
@@ -73,7 +75,7 @@
       }
 
       pptx.writeFile("Generated_Presentation.pptx");
-    }
+    });
   </script>
 </body>
 </html>
