@@ -44,9 +44,17 @@
         if (lines.length === 0) return;
         const title = lines[0].replace(/^\s*[IVXL]+\.\s*/, '').trim();
         const bullets = lines.slice(1).map(line => line.replace(/^[-*A-Z]\.?\s*/, '').trim());
+
         const slide = pptx.addSlide();
-        slide.addText(title, { x: 0.5, y: 0.3, fontSize: 24, bold: true });
-        slide.addText(bullets, { x: 0.75, y: 1, w: 8.5, h: 5.5, fontSize: 16, bullet: true });
+        slide.background = { color: 'F1F1F1' };
+        slide.addText(title, {
+          x: 0.5, y: 0.3, fontSize: 28, bold: true, color: '2F5496', 
+          align: 'center', w: '90%', h: 1
+        });
+        slide.addText(bullets, {
+          x: 0.75, y: 1.2, w: 8.5, h: 5.5, fontSize: 18, bullet: true, 
+          color: '333333', fontFace: 'Arial'
+        });
       });
       pptx.writeFile("Generated_Presentation.pptx");
     }
