@@ -1,211 +1,55 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Slide Generator</title>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            margin: 20px;
-            background: #f4f7f9;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 90vh;
-        }
-        .container {
-            max-width: 800px;
-            width: 90%;
-            margin: auto;
-            background: white;
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 6px 15px rgba(0,0,0,0.1);
-            text-align: center;
-        }
-        h2 {
-            color: #333;
-            margin-bottom: 25px;
-            font-size: 1.8em;
-        }
-        label {
-            display: block;
-            text-align: left;
-            margin-bottom: 8px;
-            font-weight: 600;
-            color: #555;
-        }
-        textarea {
-            width: calc(100% - 22px);
-            height: 250px;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            font-size: 1em;
-            margin-bottom: 15px;
-            resize: vertical;
-        }
-        input[type="file"] {
-            display: block;
-            margin-bottom: 20px;
-        }
-        button {
-            background-color: #007bff;
-            color: white;
-            padding: 12px 25px;
-            font-size: 1.1em;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: background-color 0.3s ease, transform 0.2s ease;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        button:hover {
-            background-color: #0056b3;
-            transform: translateY(-2px);
-        }
-        button:active {
-            background-color: #004085;
-            transform: translateY(0);
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Slide Generator</title>
+  <script src="https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs/dist/pptxgen.bundle.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.7.0/mammoth.browser.min.js"></script>
+  <style>
+    body { font-family: sans-serif; background: #f9f9f9; padding: 2em; }
+    textarea { width: 100%; height: 200px; margin-bottom: 1em; }
+    input[type="file"] { margin-bottom: 1em; }
+    button { padding: 10px 20px; font-size: 1em; cursor: pointer; }
+  </style>
 </head>
 <body>
+  <h2>Slide Generator</h2>
+  <textarea id="outlineText" placeholder="Paste your outline here..."></textarea><br />
+  <input type="file" id="uploadDocx" accept=".docx" /><br />
+  <button onclick="generatePresentation()">Generate PowerPoint</button>
 
-    <div class="container">
-        <h2>Create Slides from Outline or Word File6</h2>
-        <label for="outlineText"><strong>Paste your outline below:</strong></label>
-        <textarea id="outlineText" placeholder="Paste your outline here. Use Roman numerals (e.g., I., II.) for slide titles."></textarea>
+  <script>
+    document.getElementById("uploadDocx").addEventListener("change", function (event) {
+      const reader = new FileReader();
+      reader.onload = function (event) {
+        mammoth.extractRawText({ arrayBuffer: reader.result })
+          .then(function (result) {
+            document.getElementById("outlineText").value = result.value;
+          });
+      };
+      reader.readAsArrayBuffer(event.target.files[0]);
+    });
 
-        <label for="uploadDocx"><strong>Or upload a Word (.docx) file:</strong></label>
-        <input type="file" id="uploadDocx" accept=".docx"><br>
-
-        <button id="generateBtn">Generate PowerPoint</button>
-    </div>
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs/dist/pptxgen.bundle.js"></script>
-
-
-    <script src="https://unpkg.com/mammoth/mammoth.browser.min.js"></script>
-
-    <script>
-        /**
-         * Displays a styled modal message box.
-         * @param {string} message - The message to display.
-         * @param {string} type - The type of message ('error', 'warning', or 'info').
-         */
-        function showModal(message, type = 'info') {
-            const colors = {
-                error: { bg: '#f8d7da', text: '#721c24', btn: '#dc3545' },
-                warning: { bg: '#fff3cd', text: '#856404', btn: '#ffc107' },
-                info: { bg: '#d1ecf1', text: '#0c5460', btn: '#17a2b8' }
-            };
-            const config = colors[type] || colors.info;
-
-            const messageBox = document.createElement('div');
-            messageBox.style.cssText = `
-                position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-                background: ${config.bg}; color: ${config.text}; border: 1px solid ${config.btn};
-                padding: 20px; border-radius: 8px; z-index: 1000;
-                box-shadow: 0 4px 12px rgba(0,0,0,0.25); font-size: 1.1em;
-                text-align: center; max-width: 400px;
-            `;
-            messageBox.innerHTML = `
-                <p style="margin: 0 0 15px 0;">${message}</p>
-                <button onclick="this.parentNode.remove()" style="background: ${config.btn}; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer;">Close</button>
-            `;
-            document.body.appendChild(messageBox);
-        }
-
-        /**
-         * Handles the DOCX file upload and extracts text to the textarea.
-         * @param {Event} event - The file input change event.
-         */
-        function handleFileUpload(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                mammoth.extractRawText({ arrayBuffer: e.target.result })
-                    .then(result => {
-                        document.getElementById('outlineText').value = result.value;
-                    })
-                    .catch(error => {
-                        console.error("DOCX parsing error:", error);
-                        showModal("Error processing Word file. Please ensure it's a valid .docx.", 'error');
-                    });
-            };
-            reader.readAsArrayBuffer(file);
-        }
-
-        /**
-         * Main function to generate the PowerPoint presentation from the textarea content.
-         */
-        function generatePresentation() {
-            // 1. Verify the library is loaded
-            if (typeof PptxGenJS === 'undefined') {
-                console.error("PptxGenJS is not defined. Library failed to load.");
-                showModal("Error: The presentation library could not be loaded. Please check your internet and refresh.", 'error');
-                return;
-            }
-            
-            const rawText = document.getElementById("outlineText").value;
-            if (!rawText.trim()) {
-                showModal("Please paste an outline or upload a Word file.", 'warning');
-                return;
-            }
-
-            // 2. Initialize PptxGenJS
-            const pptx = new PptxGenJS();
-
-            // 3. Parse text and create slides
-            // Splits text into sections based on lines starting with Roman numerals
-            const sections = rawText.split(/\n(?=\s*[IVXLCDM]+\.)/).filter(sec => sec.trim());
-            
-            sections.forEach(sec => {
-                const lines = sec.trim().split(/\n+/).filter(line => line.trim());
-                if (lines.length === 0) return;
-
-                // First line is title; remove numeral prefix
-                const title = lines[0].trim().replace(/^[IVXLCDM]+\.\s*/, '');
-
-                // Remaining lines are bullets; remove leading markers
-                const bullets = lines.slice(1).map(line => ({
-                    text: line.replace(/^(\s*[-*]|\s*[A-Z]\.|\s*\d+\.)\s*/, '').trim()
-                })).filter(bullet => bullet.text);
-
-                // Add a new slide for this section
-                const slide = pptx.addSlide();
-                
-                // Add title text box
-                slide.addText(title, { x: 0.5, y: 0.3, w: '90%', h: 1, fontSize: 32, bold: true, color: '363636' });
-
-                // Add bullet points if any exist
-                if (bullets.length > 0) {
-                    slide.addText(bullets, { x: 0.75, y: 1.5, w: '85%', h: 5, fontSize: 20, bullet: true, color: '494949' });
-                }
-            });
-
-            // 4. Finalize and download
-            if (sections.length === 0) {
-                showModal("No slides were generated. Ensure slide titles start with Roman numerals (I., II., etc.).", 'error');
-                return;
-            }
-            
-            pptx.writeFile({ fileName: "Generated-Presentation.pptx" });
-        }
-
-        // --- Main Execution Block ---
-        // Use window.onload to ensure all scripts are loaded before adding event listeners
-        window.onload = function() {
-            document.getElementById('uploadDocx').addEventListener('change', handleFileUpload);
-            document.getElementById('generateBtn').addEventListener('click', generatePresentation);
-            console.log("Slide generator is ready! 🚀");
-        };
-    </script>
-
+    function generatePresentation() {
+      const text = document.getElementById("outlineText").value;
+      if (!text.trim()) {
+        alert("Please paste text or upload a file.");
+        return;
+      }
+      const pptx = new PptxGenJS();
+      const sections = text.split(/\n(?=\s*[IVXL]+\.)/);
+      sections.forEach(section => {
+        const lines = section.trim().split(/\n+/).filter(Boolean);
+        if (lines.length === 0) return;
+        const title = lines[0].replace(/^\s*[IVXL]+\.\s*/, '').trim();
+        const bullets = lines.slice(1).map(line => line.replace(/^[-*A-Z]\.?\s*/, '').trim());
+        const slide = pptx.addSlide();
+        slide.addText(title, { x: 0.5, y: 0.3, fontSize: 24, bold: true });
+        slide.addText(bullets, { x: 0.75, y: 1, w: 8.5, h: 5.5, fontSize: 16, bullet: true });
+      });
+      pptx.writeFile("Generated_Presentation.pptx");
+    }
+  </script>
 </body>
 </html>
