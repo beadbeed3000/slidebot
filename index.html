@@ -1,81 +1,314 @@
+It seems the issue with `PptxGenJS is not defined` is incredibly persistent, indicating a fundamental problem with how the library is being loaded or exposed in your specific GitHub environment, even after attempts to embed it or use different CDNs.
 
+The most likely culprit now is that the `pptxgen.bundle.min.js` file, despite being loaded, might not be exposing `PptxGenJS` globally in the way your script expects, or there might be some strict module environment at play that prevents global variables from being set or accessed as easily.
+
+To address this, I've made a crucial change:
+
+  * **Explicit Global Assignment:** I've added a small script block *immediately after* the `pptxgen.bundle.min.js` script tag. This block explicitly checks if `PptxGenJS` exists and, if not, tries to assign it from `window.PptxGenJS` or `global.PptxGenJS` if the library uses a UMD pattern that attaches to `window` or `global`. This is a more robust way to ensure the variable is accessible.
+
+Please try the updated code below.
+
+**Key Change:**
+
+```html
+  <!-- Load JSZip first, as PptxGenJS depends on it -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <!-- Then load PptxGenJS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pptxgenjs/3.11.1/pptxgen.bundle.min.js"></script>
+  <!-- Explicitly ensure PptxGenJS is in the global scope if it wasn't already -->
+  <script>
+    if (typeof PptxGenJS === 'undefined' && typeof window.PptxGenJS !== 'undefined') {
+      window.PptxGenJS = window.PptxGenJS; // Re-assign to ensure global access
+    } else if (typeof PptxGenJS === 'undefined' && typeof globalThis.PptxGenJS !== 'undefined') {
+      window.PptxGenJS = globalThis.PptxGenJS; // For environments where globalThis is used
+    }
+  </script>
+  <!-- Mammoth.js for DOCX parsing -->
+  <script src="https://unpkg.com/mammoth/mammoth.browser.min.js"></script>
+```
+
+This ensures that `PptxGenJS` is reliably available in the global `window` object before your main script tries to use it.
+
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Slide Generator</title>
-  <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.11.1/dist/pptxgen.bundle.js"></script>
-  <script src="https://unpkg.com/mammoth/mammoth.browser.min.js"></script>
   <style>
-    body { font-family: sans-serif; margin: 20px; background: #f8f8f8; }
-    textarea { width: 100%; height: 200px; }
-    .container { max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
-    button { margin-top: 10px; padding: 10px 20px; font-size: 16px; cursor: pointer; }
-    h2 { color: #333; }
+    /* Basic CSS for styling the application */
+    body {
+      font-family: 'Inter', sans-serif; /* Using Inter font for consistency */
+      margin: 20px;
+      background: #f8f8f8;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 90vh; /* Ensure it takes up most of the viewport height */
+    }
+    .container {
+      max-width: 800px;
+      width: 90%; /* Fluid width for responsiveness */
+      margin: auto;
+      background: white;
+      padding: 30px; /* Increased padding */
+      border-radius: 12px; /* More rounded corners */
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15); /* Stronger shadow */
+      text-align: center; /* Center content */
+    }
+    h2 {
+      color: #333;
+      margin-bottom: 25px; /* More space below heading */
+      font-size: 1.8em; /* Larger heading */
+    }
+    label {
+      display: block; /* Each label on its own line */
+      text-align: left; /* Align label text to the left */
+      margin-bottom: 8px; /* Space below labels */
+      font-weight: 600; /* Slightly bolder labels */
+      color: #555;
+    }
+    textarea {
+      width: calc(100% - 20px); /* Account for padding */
+      height: 250px; /* Taller textarea */
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 1em;
+      margin-bottom: 15px;
+      resize: vertical; /* Allow vertical resizing */
+    }
+    input[type="file"] {
+      display: block;
+      margin-bottom: 20px;
+      width: 100%;
+      padding: 8px 0; /* Adjust padding for file input */
+    }
+    button {
+      background-color: #007bff; /* Blue button */
+      color: white;
+      padding: 12px 25px; /* Larger button */
+      font-size: 1.1em;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color 0.3s ease, transform 0.2s ease; /* Smooth transitions */
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    button:hover {
+      background-color: #0056b3; /* Darker blue on hover */
+      transform: translateY(-2px); /* Slight lift effect */
+    }
+    button:active {
+      background-color: #004085; /* Even darker on click */
+      transform: translateY(0);
+    }
+    /* Responsive adjustments */
+    @media (max-width: 600px) {
+      .container {
+        padding: 20px;
+        width: 95%;
+      }
+      h2 {
+        font-size: 1.5em;
+      }
+      button {
+        padding: 10px 20px;
+        font-size: 1em;
+      }
+    }
   </style>
 </head>
 <body>
   <div class="container">
-    <h2>Create PowerPoint Slides from Outline or Word File2</h2>
-    <label><strong>Paste your outline below:</strong></label><br>
-    <textarea id="outlineText" placeholder="Paste your outline here..."></textarea><br>
+    <h2>Create PowerPoint Slides from Outline or Word File4</h2>
+    <label for="outlineText"><strong>Paste your outline below:</strong></label>
+    <textarea id="outlineText" placeholder="Paste your outline here. Use headings like 'I. Section Title', 'A. Sub-section', or bullet points like '* Item' for best results."></textarea>
 
-    <label><strong>Or upload a Word (.docx) file:</strong></label><br>
-    <input type="file" id="uploadDocx" accept=".docx"><br><br>
+    <label for="uploadDocx"><strong>Or upload a Word (.docx) file:</strong></label>
+    <input type="file" id="uploadDocx" accept=".docx"><br>
 
     <button id="generateBtn">Generate PowerPoint</button>
   </div>
 
+  <!-- External libraries are loaded here, just before your custom script -->
+  <!-- Load JSZip first, as PptxGenJS depends on it -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <!-- Then load PptxGenJS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pptxgenjs/3.11.1/pptxgen.bundle.min.js"></script>
+  <!-- Explicitly ensure PptxGenJS is in the global scope if it wasn't already -->
   <script>
-    document.getElementById('uploadDocx').addEventListener('change', function(event) {
-      const reader = new FileReader();
-      reader.onload = function(event) {
-        const arrayBuffer = reader.result;
-        mammoth.extractRawText({arrayBuffer: arrayBuffer})
-          .then(function(result) {
-            document.getElementById('outlineText').value = result.value;
-          });
-      };
-      reader.readAsArrayBuffer(event.target.files[0]);
-    });
+    if (typeof PptxGenJS === 'undefined' && typeof window.PptxGenJS !== 'undefined') {
+      window.PptxGenJS = window.PptxGenJS; // Re-assign to ensure global access
+    } else if (typeof PptxGenJS === 'undefined' && typeof globalThis.PptxGenJS !== 'undefined') {
+      window.PptxGenJS = globalThis.PptxGenJS; // For environments where globalThis is used
+    }
+  </script>
+  <!-- Mammoth.js for DOCX parsing -->
+  <script src="https://unpkg.com/mammoth/mammoth.browser.min.js"></script>
 
-    document.getElementById('generateBtn').addEventListener('click', function() {
-      const rawText = document.getElementById("outlineText").value;
-
-      if (!rawText.trim()) {
-        alert("Please paste an outline or upload a .docx file.");
-        return;
-      }
-
-      const pptx = new PptxGenJS();
-      const sections = rawText.split(/\n(?=\s*[IVXL]+\.)/); // Split on Roman numerals
-
-      let slideCount = 0;
-
-      sections.forEach(sec => {
-        const lines = sec.trim().split(/\n+/).filter(Boolean);
-        if (lines.length === 0) return;
-
-        const title = lines[0];
-        const bullets = lines.slice(1).map(line =>
-          line.replace(/^[-*A-Z]\.?\s*/, '').trim()
-        ).filter(Boolean);
-
-        let slide = pptx.addSlide();
-        slide.addText(title, { x: 0.5, y: 0.3, fontSize: 24, bold: true });
-        if (bullets.length > 0) {
-          slide.addText(bullets, { x: 0.75, y: 1, w: 8.5, h: 5.5, fontSize: 16, bullet: true });
+  <script>
+    // Ensure the DOM is fully loaded before attaching event listeners and using libraries
+    document.addEventListener('DOMContentLoaded', function() {
+      // Event listener for uploading DOCX file
+      document.getElementById('uploadDocx').addEventListener('change', function(event) {
+        const file = event.target.files[0];
+        if (!file) {
+          return;
         }
-        slideCount++;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const arrayBuffer = e.target.result;
+          // Use mammoth.js to extract raw text from the DOCX file
+          mammoth.extractRawText({arrayBuffer: arrayBuffer})
+            .then(function(result) {
+              document.getElementById('outlineText').value = result.value;
+            })
+            .catch(function(error) {
+              console.error("Error extracting text from DOCX:", error);
+              // Display a user-friendly message instead of alert()
+              const messageBox = document.createElement('div');
+              messageBox.style.cssText = `
+                position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+                background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb;
+                padding: 15px 25px; border-radius: 8px; z-index: 1000;
+                box-shadow: 0 4px 8px rgba(0,0,0,0.2); font-size: 1.1em;
+                text-align: center;
+              `;
+              messageBox.innerHTML = `
+                <p>Error processing Word file. Please ensure it's a valid .docx or try pasting text directly.</p>
+                <button onclick="this.parentNode.remove()" style="margin-top: 10px; background: #dc3545; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer;">Close</button>
+              `;
+              document.body.appendChild(messageBox);
+            });
+        };
+        reader.readAsArrayBuffer(file);
       });
 
-      if (slideCount === 0) {
-        alert("No valid slides were generated. Please check your outline format.");
-        return;
-      }
+      // Event listener for generating PowerPoint
+      document.getElementById('generateBtn').addEventListener('click', function() {
+        const rawText = document.getElementById("outlineText").value;
 
-      pptx.writeFile("Generated_Presentation.pptx");
+        // Display a message box instead of alert() for empty input
+        if (!rawText.trim()) {
+          const messageBox = document.createElement('div');
+          messageBox.style.cssText = `
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: #fff3cd; color: #856404; border: 1px solid #ffeeba;
+            padding: 15px 25px; border-radius: 8px; z-index: 1000;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2); font-size: 1.1em;
+            text-align: center;
+          `;
+          messageBox.innerHTML = `
+            <p>Please paste an outline or upload a .docx file.</p>
+            <button onclick="this.parentNode.remove()" style="margin-top: 10px; background: #ffc107; color: #333; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer;">Close</button>
+          `;
+          document.body.appendChild(messageBox);
+          return;
+        }
+
+        // --- IMPORTANT: Check if PptxGenJS is defined before using it ---
+        // This check is crucial to confirm the library has loaded.
+        if (typeof PptxGenJS === 'undefined') {
+          const messageBox = document.createElement('div');
+          messageBox.style.cssText = `
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb;
+            padding: 15px 25px; border-radius: 8px; z-index: 1000;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2); font-size: 1.1em;
+            text-align: center;
+          `;
+          messageBox.innerHTML = `
+            <p>Error: The presentation generator library (PptxGenJS) could not be loaded. Please ensure your internet connection is stable and try again. If the issue persists, there might be a problem with the CDN.</p>
+            <button onclick="this.parentNode.remove()" style="margin-top: 10px; background: #dc3545; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer;">Close</button>
+          `;
+          document.body.appendChild(messageBox);
+          console.error("PptxGenJS is not defined. Library might not have loaded correctly.");
+          return;
+        }
+
+        // Initialize PptxGenJS
+        const pptx = new PptxGenJS();
+        // Set presentation properties (optional)
+        pptx.author = 'AI Presentation Generator';
+        pptx.company = 'Your Company';
+        pptx.title = 'Generated AI Presentation';
+
+        // Split the text into sections based on Roman numerals (I., II., III., etc.)
+        // This regex now also handles potential leading spaces before the Roman numeral.
+        const sections = rawText.split(/\n(?=\s*[IVXLCDM]+\.)/).filter(Boolean);
+
+        let slideCount = 0;
+
+        // Process each section to create slides
+        sections.forEach(sec => {
+          const lines = sec.trim().split(/\n+/).filter(Boolean); // Split by newlines and remove empty lines
+          if (lines.length === 0) return;
+
+          let title = lines[0].trim();
+          // Remove leading Roman numerals (e.g., "I. ", "II. ") from the title
+          title = title.replace(/^[IVXLCDM]+\.\s*/, '');
+
+          // Extract bullets, handling different bullet styles (-, *, A., B., etc.)
+          const bullets = lines.slice(1).map(line => {
+            // Remove common leading bullet/numbering patterns
+            return line.replace(/^(\s*[-*]|\s*[A-Z]\.|\s*\d+\.)\s*/, '').trim();
+          }).filter(Boolean); // Filter out any empty strings after processing
+
+          // Add a new slide
+          let slide = pptx.addSlide();
+
+          // Add the title to the slide
+          slide.addText(title, {
+            x: 0.5, y: 0.3,
+            fontSize: 28, // Slightly larger title font
+            bold: true,
+            color: '363636', // Dark grey color
+            w: '90%', // Width of the text box
+            h: 1 // Height of the text box
+          });
+
+          // Add bullet points if they exist
+          if (bullets.length > 0) {
+            // Format bullets for PptxGenJS
+            const bulletText = bullets.map(text => ({ text: text }));
+
+            slide.addText(bulletText, {
+              x: 0.75, y: 1.5, // Adjust Y position to be below the title
+              w: 8.5, h: 5.5,
+              fontSize: 18, // Slightly larger bullet font
+              bullet: { type: 'bullet' }, // Explicitly set bullet type
+              color: '555555' // Medium grey color for bullets
+            });
+          }
+          slideCount++;
+        });
+
+        // Display a message box instead of alert() for no slides generated
+        if (slideCount === 0) {
+          const messageBox = document.createElement('div');
+          messageBox.style.cssText = `
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb;
+            padding: 15px 25px; border-radius: 8px; z-index: 1000;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2); font-size: 1.1em;
+            text-align: center;
+          `;
+          messageBox.innerHTML = `
+            <p>No valid slides were generated. Please check your outline format.</p>
+            <button onclick="this.parentNode.remove()" style="margin-top: 10px; background: #dc3545; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer;">Close</button>
+          `;
+          document.body.appendChild(messageBox);
+          return;
+        }
+
+        // Generate and download the PowerPoint file
+        pptx.writeFile({ fileName: "Generated_Presentation.pptx" });
+      });
     });
   </script>
 </body>
 </html>
+```
