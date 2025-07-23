@@ -1,0 +1,79 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+  <title>AI-Powered Slide Generator</title>
+  <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.11.1/dist/pptxgen.bundle.js"></script>
+  <script src="https://unpkg.com/mammoth/mammoth.browser.min.js"></script>
+  <style>
+    body { font-family: sans-serif; margin: 20px; }
+    textarea { width: 100%; height: 200px; }
+    .container { max-width: 800px; margin: auto; }
+    button { margin-top: 10px; padding: 10px 15px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Create PowerPoint Slides from Outline or Word File</h2>
+    <label><strong>Paste your outline below:</strong></label><br>
+    <textarea id="outlineText" placeholder="Paste your outline here..."></textarea><br>
+
+    <label><strong>Or upload a Word (.docx) file:</strong></label><br>
+    <input type="file" id="uploadDocx" accept=".docx"><br><br>
+
+    <button onclick="generateSlides()">Generate PowerPoint</button>
+  </div>
+
+  <script>
+    document.getElementById('uploadDocx').addEventListener('change', function(event) {
+      const reader = new FileReader();
+      reader.onload = function(event) {
+        const arrayBuffer = reader.result;
+        mammoth.extractRawText({arrayBuffer: arrayBuffer})
+          .then(function(result) {
+            document.getElementById('outlineText').value = result.value;
+          });
+      };
+      reader.readAsArrayBuffer(event.target.files[0]);
+    });
+
+    function generateSlides() {
+      const pptx = new PptxGenJS();
+      const rawText = document.getElementById("outlineText").value;
+
+      if (!rawText.trim()) {
+        alert("Please paste an outline or upload a .docx file.");
+        return;
+      }
+
+      const sections = rawText.split(/\n(?=\s*[IVXL]+\.)/); // Split on roman numerals like I., II., III.
+
+      let slideCount = 0;
+
+      sections.forEach(sec => {
+        const lines = sec.trim().split(/\n+/).filter(Boolean);
+        if (lines.length === 0) return;
+
+        const title = lines[0];
+        const bullets = lines.slice(1).map(line =>
+          line.replace(/^[-*A-Z]\.?\s*/, '').trim()
+        ).filter(Boolean);
+
+        let slide = pptx.addSlide();
+        slide.addText(title, { x: 0.5, y: 0.3, fontSize: 24, bold: true });
+        if (bullets.length > 0) {
+          slide.addText(bullets, { x: 0.75, y: 1, w: 8.5, h: 5.5, fontSize: 16, bullet: true });
+        }
+        slideCount++;
+      });
+
+      if (slideCount === 0) {
+        alert("No valid slides were generated. Please check your outline format.");
+        return;
+      }
+
+      pptx.writeFile("Generated_Presentation.pptx");
+    }
+  </script>
+</body>
+</html>
