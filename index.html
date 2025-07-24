@@ -1,33 +1,71 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Enhanced Slide Generator</title>
-  <link rel="stylesheet" href="styles.css">
-  <script src="https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs/dist/pptxgen.bundle.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.7.0/mammoth.browser.min.js"></script>
-</head>
-<body>
-  <h2>Slide Generator</h2>
+function generatePresentation() {
+  const text = document.getElementById("outlineText").value;
+  if (!text.trim()) {
+    alert("Please paste text or upload a file.");
+    return;
+  }
+  const pptx = new PptxGenJS();
+  const logoUrl = "https://kvec.theholler.org/wp-content/uploads/2023/12/wgKVEC-300x240.png";
 
-  <!-- Customization Controls -->
-  <section id="customization">
-    <fieldset>
-      <legend>Theme & Output Settings</legend>
-      <label>Background Color: <input type="color" id="bgColor" value="#F1F1F1"></label>
-      <label>Text Color:       <input type="color" id="textColor" value="#0F60AD"></label>
-      <label>Bullet Font Size: <input type="number" id="bulletSize" value="18" min="10" max="36"></label>
-      <label>Logo URL:         <input type="url"    id="logoUrl" value="assets/logo.png"></label>
-      <label>Filename:         <input type="text"   id="fileName" value="Generated_Presentation.pptx"></label>
-    </fieldset>
-  </section>
+  // This regex finds "I.", "II.", ... or "A.", "B.", ... at the start of a line (case sensitive)
+  const slideBreakRegex = /^([IVXLCDM]+\.|[A-Z]\.)\s+(.*)/gm;
 
-  <textarea id="outlineText" placeholder="Paste your outline here..."></textarea><br />
-  <input type="file" id="uploadDocx" accept=".docx"><br />
-  <button id="generateBtn">Generate PowerPoint</button>
+  let match;
+  let slides = [];
+  let lastIndex = 0;
+  let currentSlide = null;
 
-  <div id="spinner" hidden>Generating slides…</div>
-  <script src="scripts.js"></script>
-</body>
-</html>
+  while ((match = slideBreakRegex.exec(text)) !== null) {
+    if (currentSlide) {
+      currentSlide.content = text.substring(lastIndex, match.index).trim();
+      slides.push(currentSlide);
+    }
+    currentSlide = {
+      title: match[0].trim(),
+      cleanTitle: match[2].trim(),
+      start: match.index,
+      end: slideBreakRegex.lastIndex,
+      content: "" // to be filled in next loop
+    };
+    lastIndex = match.index + match[0].length;
+  }
+  if (currentSlide) {
+    currentSlide.content = text.substring(lastIndex).trim();
+    slides.push(currentSlide);
+  }
+
+  // Now, generate slides
+  slides.forEach(slideObj => {
+    const slide = pptx.addSlide();
+    slide.background = { color: 'F1F1F1' };
+    slide.addText(slideObj.cleanTitle, {
+      x: 0.5, y: 0.3, fontSize: 28, bold: true, color: '0F60AD',
+      align: 'center', w: '90%', h: 1
+    });
+
+    // Split content into bullets (split by newline, remove empty lines)
+    const bullets = slideObj.content
+      .split('\n')
+      .map(line => line.trim())
+      .filter(Boolean);
+
+    if (bullets.length > 0) {
+      slide.addText(bullets, {
+        x: 0.75, y: 1.2, w: 8.5, h: 5.5, fontSize: 18, bullet: true,
+        color: '333333', fontFace: 'Arial'
+      });
+    }
+
+    slide.addShape(pptx.ShapeType.rect, {
+      x: 0, y: 6.7, w: '100%', h: 0.3,
+      fill: { color: '71AC4A' }
+    });
+
+    slide.addImage({
+      path: logoUrl,
+      x: 9.2, y: 6.5, w: 1.2, h: 0.6
+    });
+  });
+
+  pptx.writeFile("Generated_Presentation.pptx");
+}
