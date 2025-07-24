@@ -1,5 +1,6 @@
 // Extract DOCX text
-document.getElementById('uploadDocx').addEventListener('change', event => {
+const fileInput = document.getElementById('uploadDocx');
+fileInput.addEventListener('change', event => {
   const reader = new FileReader();
   reader.onload = () => {
     mammoth.extractRawText({ arrayBuffer: reader.result })
@@ -20,25 +21,24 @@ function generatePresentation() {
   }
 
   // Read customization values
-  const bgColor   = document.getElementById('bgColor').value;
-  const textColor = document.getElementById('textColor').value;
-  const bulletSize = +document.getElementById('bulletSize').value;
-  const logoUrl   = document.getElementById('logoUrl').value;
-  const fileName  = document.getElementById('fileName').value;
-  const spinner   = document.getElementById('spinner');
+  const bgColor    = document.getElementById('bgColor').value;
+  const textColor  = document.getElementById('textColor').value;
+  const bulletSize = parseInt(document.getElementById('bulletSize').value, 10);
+  const logoUrl    = document.getElementById('logoUrl').value;
+  const fileName   = document.getElementById('fileName').value;
+  const spinner    = document.getElementById('spinner');
 
-  // Show spinner
   spinner.hidden = false;
-
   try {
     const pptx = new PptxGenJS();
     const lines = text.split(/\n+/);
-    let slide = null, title = '', bullets = [];
+    let slide = null;
+    let title = '';
+    let bullets = [];
 
-    // Regex for headings: numeric (1.), Roman (I.), Markdown (#)
-    const headingPattern = /^(?:\s*)(?:\d+(?:\.\d*)?|[IVXLCDM]+|#+)\.?\s+(.+)/;
+    // Headings: numeric, Roman, letters (A., B.), Markdown
+    const headingPattern = /^\s*(?:\d+(?:\.\d*)?|[IVXLCDM]+|[A-Z]|#+)\.?\s+(.+)/;
 
-    // Add slide content when ready
     function finalizeSlide() {
       if (!slide) return;
       slide.background = { color: bgColor };
@@ -56,14 +56,10 @@ function generatePresentation() {
           fontSize: bulletSize, color: textColor
         });
       }
-      slide.addShape(pptx.ShapeType.rect, {
-        x: 0, y: 6.7, w: '100%', h: 0.3,
-        fill: { color: '71AC4A' }
-      });
+      slide.addShape(pptx.ShapeType.rect, { x: 0, y: 6.7, w: '100%', h: 0.3, fill: { color: '71AC4A' } });
       slide.addImage({ data: logoUrl, x: 9.2, y: 6.5, w: 1.2, h: 0.6 });
     }
 
-    // Process each line
     lines.forEach(line => {
       const trimmed = line.trim();
       const match = trimmed.match(headingPattern);
@@ -77,8 +73,6 @@ function generatePresentation() {
       }
     });
     finalizeSlide();
-
-    // Save file
     pptx.writeFile(fileName);
   } catch (err) {
     alert('Error generating presentation: ' + err.message);
@@ -87,10 +81,9 @@ function generatePresentation() {
   }
 }
 
-// Parse nested bullets by indentation or markers
 function parseBullet(line) {
-  const indent = line.match(/^\s*/)[0].length;
-  const level  = Math.floor(indent / 2) + 1;
-  const text   = line.trim().replace(/^[-*]\s*/, '');
+  const indent = (line.match(/^\s*/) || [''])[0].length;
+  const level = Math.floor(indent / 2) + 1;
+  const text = line.trim().replace(/^[-*]\s*/, '');
   return { text, options: { bullet: true, indentLevel: level } };
 }
