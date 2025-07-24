@@ -15,20 +15,19 @@
   <section id="customization">
     <fieldset>
       <legend>Theme & Output Settings</legend>
-      <label>Background: <input type="color" id="bgColor" value="#F1F1F1" aria-label="Background color picker"></label>
-      <label>Text Color: <input type="color" id="textColor" value="#0F60AD" aria-label="Text color picker"></label>
-      <label>Bullet Size: <input type="number" id="bulletSize" value="18" min="10" max="36" aria-label="Bullet font size"></label>
-      <label>Logo URL: <input type="url" id="logoUrl" value="assets/logo.png" aria-label="Logo URL"></label>
-      <label>Filename: <input type="text" id="fileName" value="Generated_Presentation.pptx" aria-label="Output filename"></label>
+      <label>Background Color: <input type="color" id="bgColor" value="#F1F1F1"></label>
+      <label>Text Color:       <input type="color" id="textColor" value="#0F60AD"></label>
+      <label>Bullet Font Size: <input type="number" id="bulletSize" value="18" min="10" max="36"></label>
+      <label>Logo URL:         <input type="url"    id="logoUrl" value="assets/logo.png"></label>
+      <label>Filename:         <input type="text"   id="fileName" value="Generated_Presentation.pptx"></label>
     </fieldset>
   </section>
 
-  <textarea id="outlineText" placeholder="Paste your outline here..." aria-label="Outline text"></textarea><br />
-  <input type="file" id="uploadDocx" accept=".docx" aria-label="Upload DOCX file"><br />
+  <textarea id="outlineText" placeholder="Paste your outline here..."></textarea><br />
+  <input type="file" id="uploadDocx" accept=".docx"><br />
   <button id="generateBtn">Generate PowerPoint</button>
 
   <div id="spinner" hidden>Generating slides…</div>
-
   <script src="scripts.js"></script>
 </body>
 </html>
