@@ -38,6 +38,7 @@
         return;
       }
       const pptx = new PptxGenJS();
+      const logoUrl = "https://kvec.theholler.org/wp-content/uploads/2023/12/wgKVEC-300x240.png"; // Example logo URL
       const sections = text.split(/\n(?=\s*[IVXL]+\.)/);
       sections.forEach(section => {
         const lines = section.trim().split(/\n+/).filter(Boolean);
@@ -47,13 +48,25 @@
 
         const slide = pptx.addSlide();
         slide.background = { color: 'F1F1F1' };
+
         slide.addText(title, {
-          x: 0.5, y: 0.3, fontSize: 28, bold: true, color: '2F5496', 
+          x: 0.5, y: 0.3, fontSize: 28, bold: true, color: '0F60AD', 
           align: 'center', w: '90%', h: 1
         });
+
         slide.addText(bullets, {
           x: 0.75, y: 1.2, w: 8.5, h: 5.5, fontSize: 18, bullet: true, 
           color: '333333', fontFace: 'Arial'
+        });
+
+        slide.addShape(pptx.ShapeType.rect, {
+          x: 0, y: 6.7, w: '100%', h: 0.3,
+          fill: { color: '71AC4A' }
+        });
+
+        slide.addImage({
+          data: logoUrl,
+          x: 9.2, y: 6.5, w: 1.2, h: 0.6
         });
       });
       pptx.writeFile("Generated_Presentation.pptx");
