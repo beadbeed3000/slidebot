@@ -11,12 +11,14 @@
     h2 { color: #0F60AD; }
     textarea { width: 100%; min-height: 180px; margin-bottom: 1em; font-size: 1em; }
     input[type="file"] { margin-bottom: 1em; }
-    button { padding: 12px 32px; font-size: 1.1em; background: #0F60AD; color: #fff; border: none; border-radius: 7px; cursor: pointer; }
+    button { padding: 12px 32px; font-size: 1.1em; background: #0F60AD; color: #fff; border: none; border-radius: 7px; cursor: pointer; margin-right: 8px; }
     button:hover { background: #276fd0; }
     .logo-preview { margin-bottom: 1em; max-width: 200px; }
+    #slidePreview { margin-top:2em; max-width:900px; }
     @media (max-width: 600px) {
       body { padding: 0.5em; }
       .logo-preview { max-width: 100px; }
+      #slidePreview > div { padding: 1em 1em 1em 1em !important; }
     }
   </style>
 </head>
@@ -32,7 +34,9 @@ A. What is AI?
 II. Next Section
 ..."></textarea><br/>
   <input type="file" id="uploadDocx" accept=".docx"/><br/>
+  <button onclick="previewFirstSlide()">Preview First Slide</button>
   <button onclick="generatePresentation()">Generate PowerPoint</button>
+  <div id="slidePreview"></div>
 
   <script>
     document.getElementById("uploadDocx").addEventListener("change", function (event) {
@@ -46,6 +50,42 @@ II. Next Section
       reader.readAsArrayBuffer(event.target.files[0]);
     });
 
+    function getFirstSlideContent() {
+      const text = document.getElementById("outlineText").value;
+      if (!text.trim()) {
+        alert("Please paste text or upload a file.");
+        return null;
+      }
+      const logoUrl = "https://beadbeed3000.github.io/slidebot/assets/logo.png";
+      const slideBreakRegex = /^([IVXLCDM]+\.|[A-Z]\.)\s+(.*)$/gm;
+      let matches = [];
+      let match;
+      while ((match = slideBreakRegex.exec(text)) !== null) {
+        matches.push({
+          full: match[0],
+          clean: match[2].trim(),
+          index: match.index,
+        });
+      }
+      if (matches.length === 0) {
+        alert("No slide headings found. Use Roman numerals or capital letters + . for slide breaks.");
+        return null;
+      }
+      // Get content for first heading
+      const start = matches[0].index + matches[0].full.length;
+      const end = matches[1] ? matches[1].index : text.length;
+      const content = text.substring(start, end).trim();
+      // Only use non-heading lines as bullets
+      const bullets = content.split('\n').map(l => l.trim()).filter(Boolean).filter(l => !/^([IVXLCDM]+\.|[A-Z]\.)\s+/.test(l));
+      return { title: matches[0].clean, bullets: bullets, logoUrl: logoUrl };
+    }
+
+    function previewFirstSlide() {
+      const slide = getFirstSlideContent();
+      if (!slide) return;
+      showPreview(slide.title, slide.bullets, slide.logoUrl);
+    }
+
     function generatePresentation() {
       const text = document.getElementById("outlineText").value;
       if (!text.trim()) {
@@ -54,12 +94,9 @@ II. Next Section
       }
       const pptx = new PptxGenJS();
       const logoUrl = "https://beadbeed3000.github.io/slidebot/assets/logo.png";
-
-      // Find headings and their indices (Roman numerals or single capital letters, both with dot)
       const slideBreakRegex = /^([IVXLCDM]+\.|[A-Z]\.)\s+(.*)$/gm;
       let matches = [];
       let match;
-
       while ((match = slideBreakRegex.exec(text)) !== null) {
         matches.push({
           full: match[0],
@@ -67,14 +104,19 @@ II. Next Section
           index: match.index,
         });
       }
-
-      // Add a dummy match at the end to help extract last section
       matches.push({ index: text.length });
-
+      let previewed = false;
       for (let i = 0; i < matches.length - 1; i++) {
         const start = matches[i].index + matches[i].full.length;
         const end = matches[i + 1].index;
-        const content = text.substring(start, end).trim();
+        let content = text.substring(start, end).trim();
+
+        // Only use non-heading lines as bullets!
+        const bullets = content
+          .split('\n')
+          .map(l => l.trim())
+          .filter(Boolean)
+          .filter(l => !/^([IVXLCDM]+\.|[A-Z]\.)\s+/.test(l));
 
         const slide = pptx.addSlide();
         slide.background = { color: 'F1F1F1' };
@@ -82,30 +124,44 @@ II. Next Section
           x: 0.5, y: 0.3, fontSize: 28, bold: true, color: '0F60AD',
           align: 'center', w: '90%', h: 1
         });
-
-        const bullets = content.split('\n').map(l => l.trim()).filter(Boolean);
         if (bullets.length > 0) {
           slide.addText(bullets, {
             x: 0.75, y: 1.2, w: 8.5, h: 5.5, fontSize: 18, bullet: true,
             color: '333333', fontFace: 'Arial'
           });
         }
-
-       // Green bar
-slide.addShape(pptx.ShapeType.rect, {
-  x: 0, y: 5.0, w: '100%', h: 0.7,
-  fill: { color: '71AC4A' }
-});
-
-// Logo (bottom-right)
-slide.addImage({
-  path: logoUrl,
-  x: 8.5, y: 5.0, w: .5, h: .5
-});
-
+        // Green bar at bottom
+        slide.addShape(pptx.ShapeType.rect, {
+          x: 0, y: 5.0, w: '100%', h: 0.7,
+          fill: { color: '71AC4A' }
+        });
+        // Logo (bottom-right)
+        slide.addImage({
+          path: logoUrl,
+          x: 9, y: 5, w: 0.7, h: 0.7
+        });
+        // Show preview for first slide only
+        if (!previewed) {
+          showPreview(matches[i].clean, bullets, logoUrl);
+          previewed = true;
+        }
       }
-
       pptx.writeFile("Generated_Presentation.pptx");
+    }
+
+    // HTML preview of the first slide under the button
+    function showPreview(title, bullets, logoUrl) {
+      const slideHTML = `
+        <div style="background:#f1f1f1; border-radius:20px; box-shadow:0 2px 10px #bbb; padding:2em 2em 1.7em 2em; width:900px; max-width:100%; min-height:420px; position:relative; font-family:sans-serif;">
+          <div style="text-align:center; font-size:2em; font-weight:bold; color:#0F60AD; margin-bottom:1.2em;">${title}</div>
+          <ul style="font-size:1.25em; color:#222; margin-bottom:8em;">
+            ${bullets.map(bullet => `<li>${bullet}</li>`).join("")}
+          </ul>
+          <div style="position:absolute; left:0; right:0; bottom:30px; height:56px; background:#71AC4A; border-radius:6px;"></div>
+          <img src="${logoUrl}" alt="Logo" style="position:absolute; right:8px; bottom:24px; width:70px; height:70px; background:#fff; border-radius:50%; box-shadow:0 0 4px #999; object-fit:contain;"/>
+        </div>
+      `;
+      document.getElementById('slidePreview').innerHTML = slideHTML;
     }
   </script>
 </body>
