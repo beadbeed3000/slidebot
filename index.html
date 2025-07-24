@@ -91,15 +91,18 @@ II. Next Section
           });
         }
 
-        slide.addShape(pptx.ShapeType.rect, {
-          x: 0, y: 6.7, w: '100%', h: 0.3,
-          fill: { color: '71AC4A' }
-        });
+       // Green bar
+slide.addShape(pptx.ShapeType.rect, {
+  x: 0, y: 5.0, w: '100%', h: 0.3,
+  fill: { color: '71AC4A' }
+});
 
-        slide.addImage({
-          path: logoUrl,
-          x: 9.2, y: 6.5, w: 1.2, h: 0.6
-        });
+// Logo (bottom-right)
+slide.addImage({
+  path: logoUrl,
+  x: 8.5, y: 5.0, w: 1.2, h: 0.6
+});
+
       }
 
       pptx.writeFile("Generated_Presentation.pptx");
