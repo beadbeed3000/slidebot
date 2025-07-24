@@ -37,38 +37,55 @@
         alert("Please paste text or upload a file.");
         return;
       }
+
       const pptx = new PptxGenJS();
-      const logoUrl = "https://kvec.theholler.org/wp-content/uploads/2023/12/wgKVEC-300x240.png"; // Example logo URL
-      const sections = text.split(/\n(?=\s*[IVXL]+\.)/);
-      sections.forEach(section => {
-        const lines = section.trim().split(/\n+/).filter(Boolean);
-        if (lines.length === 0) return;
-        const title = lines[0].replace(/^\s*[IVXL]+\.\s*/, '').trim();
-        const bullets = lines.slice(1).map(line => line.replace(/^[-*A-Z]\.?\s*/, '').trim());
+      const logoUrl = "https://kvec.theholler.org/wp-content/uploads/2023/12/wgKVEC-300x240.png";
 
-        const slide = pptx.addSlide();
-        slide.background = { color: 'F1F1F1' };
+      const lines = text.split(/\n+/);
+      let slide = null;
+      let title = '';
+      let bullets = [];
 
-        slide.addText(title, {
-          x: 0.5, y: 0.3, fontSize: 28, bold: true, color: '0F60AD', 
-          align: 'center', w: '90%', h: 1
-        });
+      function finalizeSlide() {
+        if (slide && (title || bullets.length)) {
+          slide.background = { color: 'F1F1F1' };
+          if (title) {
+            slide.addText(title, {
+              x: 0.5, y: 0.3, fontSize: 28, bold: true, color: '0F60AD', 
+              align: 'center', w: '90%', h: 1
+            });
+          }
+          if (bullets.length > 0) {
+            slide.addText(bullets, {
+              x: 0.75, y: 1.2, w: 8.5, h: 5.5, fontSize: 18, bullet: true, 
+              color: '333333', fontFace: 'Arial'
+            });
+          }
+          slide.addShape(pptx.ShapeType.rect, {
+            x: 0, y: 6.7, w: '100%', h: 0.3,
+            fill: { color: '71AC4A' }
+          });
+          slide.addImage({
+            data: logoUrl,
+            x: 9.2, y: 6.5, w: 1.2, h: 0.6
+          });
+        }
+      }
 
-        slide.addText(bullets, {
-          x: 0.75, y: 1.2, w: 8.5, h: 5.5, fontSize: 18, bullet: true, 
-          color: '333333', fontFace: 'Arial'
-        });
-
-        slide.addShape(pptx.ShapeType.rect, {
-          x: 0, y: 6.7, w: '100%', h: 0.3,
-          fill: { color: '71AC4A' }
-        });
-
-        slide.addImage({
-          data: logoUrl,
-          x: 9.2, y: 6.5, w: 1.2, h: 0.6
-        });
+      lines.forEach(line => {
+        const trimmed = line.trim();
+        if (/^[IVXLCDM]+\./.test(trimmed)) {
+          finalizeSlide();
+          slide = pptx.addSlide();
+          title = trimmed.replace(/^[IVXLCDM]+\.\s*/, '');
+          bullets = [];
+        } else if (/^[A-Z]\./.test(trimmed)) {
+          bullets.push(trimmed.replace(/^[A-Z]\.\s*/, ''));
+        } else if (trimmed.length > 0) {
+          bullets.push(trimmed);
+        }
       });
+      finalizeSlide();
       pptx.writeFile("Generated_Presentation.pptx");
     }
   </script>
