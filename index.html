@@ -4,164 +4,389 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Slidebot - PowerPoint Generator</title>
+  
+  <!-- Tailwind CSS for modern styling -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- PptxGenJS library for creating PowerPoint files -->
   <script src="https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs/dist/pptxgen.bundle.js"></script>
+  
+  <!-- Mammoth.js for reading .docx files -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.7.0/mammoth.browser.min.js"></script>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
   <style>
-    body { font-family: sans-serif; background: #f9f9f9; padding: 2em; }
-    h2 { color: #0F60AD; }
-    textarea { width: 100%; min-height: 180px; margin-bottom: 1em; font-size: 1em; }
-    input[type="file"] { margin-bottom: 1em; }
-    button { padding: 12px 32px; font-size: 1.1em; background: #0F60AD; color: #fff; border: none; border-radius: 7px; cursor: pointer; margin-right: 8px; }
-    button:hover { background: #276fd0; }
-    .logo-preview { margin-bottom: 1em; max-width: 200px; }
-    #slidePreview { margin-top:2em; max-width:900px; }
-    @media (max-width: 600px) {
-      body { padding: 0.5em; }
-      .logo-preview { max-width: 100px; }
-      #slidePreview > div { padding: 1em 1em 1em 1em !important; }
+    /* Custom font and base styling */
+    body { 
+      font-family: 'Inter', sans-serif; 
+      background-color: #f8fafc; /* Tailwind gray-50 */
+    }
+    /* Simple transition for button hover */
+    button {
+      transition: background-color 0.2s ease-in-out;
     }
   </style>
 </head>
-<body>
-  <img src="assets/logo.png" alt="Logo" class="logo-preview"/>
-  <h2>Slidebot: Generate a PowerPoint from an Outline</h2>
-  <p>Paste your outline using Roman numerals and/or capital letters for slide breaks (e.g., <strong>I.</strong>, <strong>A.</strong>, etc.). Or upload a .docx file.</p>
-  <textarea id="outlineText" placeholder="Example:
-I. Introduction
-- Welcome!
-A. What is AI?
-- AI means...
-II. Next Section
-..."></textarea><br/>
-  <input type="file" id="uploadDocx" accept=".docx"/><br/>
-  <button onclick="previewFirstSlide()">Preview First Slide</button>
-  <button onclick="generatePresentation()">Generate PowerPoint</button>
-  <div id="slidePreview"></div>
+<body class="flex items-center justify-center min-h-screen">
+
+  <div class="w-full max-w-3xl mx-auto p-4 md:p-8 bg-white rounded-2xl shadow-lg">
+    
+    <!-- Header Section -->
+    <div class="flex items-center mb-6">
+      <img src="https://beadbeed3000.github.io/slidebot/assets/logo.png" alt="Slidebot Logo" class="h-12 w-12 mr-4" onerror="this.onerror=null;this.src='https://placehold.co/48x48/71AC4A/FFFFFF?text=S';">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-800">Slidebot</h1>
+        <p class="text-gray-500">AI-Powered PowerPoint Generator</p>
+      </div>
+    </div>
+
+    <!-- Instructions -->
+    <div class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+      <p class="text-sm text-blue-800">
+        Paste your outline below. Use Roman numerals (e.g., <strong>I., II.</strong>) to mark the beginning of each new slide. Sub-points (A., B., -) will become bullet points. You can also upload a <strong>.docx</strong> file.
+      </p>
+    </div>
+
+    <!-- Text Area for Outline -->
+    <textarea id="outlineText" 
+              class="w-full h-64 p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" 
+              placeholder="Example:&#10;I. Introduction to Modern AI&#10;A. What is Artificial Intelligence?&#10;- Definition and core concepts&#10;- Key milestones in AI history&#10;B. Why AI is Important&#10;- Impact on various industries&#10;&#10;II. Key Branches of AI&#10;A. Machine Learning&#10;- Supervised vs. Unsupervised Learning&#10;..."></textarea>
+    
+    <!-- Options Section -->
+    <div class="mb-4 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+      <h3 class="text-sm font-semibold text-gray-700 mb-3">Generation Options</h3>
+      <div class="flex flex-col sm:flex-row gap-4">
+        <div class="flex items-center gap-2">
+          <label class="text-sm text-gray-600">Max bullets per slide:</label>
+          <select id="maxBullets" class="px-2 py-1 border border-gray-300 rounded text-sm">
+            <option value="4">4</option>
+            <option value="5" selected>5</option>
+            <option value="6">6</option>
+            <option value="8">8</option>
+            <option value="999">No limit</option>
+          </select>
+        </div>
+        <div class="flex items-center gap-2">
+          <label class="text-sm text-gray-600">Template:</label>
+          <select id="slideTemplate" class="px-2 py-1 border border-gray-300 rounded text-sm">
+            <option value="default">Default</option>
+            <option value="minimal">Minimal</option>
+            <option value="corporate">Corporate</option>
+            <option value="academic">Academic</option>
+          </select>
+        </div>
+        <div class="flex items-center gap-2">
+          <input type="checkbox" id="showPageNumbers" checked class="rounded">
+          <label class="text-sm text-gray-600">Show page numbers</label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="flex flex-col sm:flex-row items-center justify-between mt-4 gap-4">
+      <input type="file" id="uploadDocx" accept=".docx" class="text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"/>
+      <button onclick="generatePresentation()" class="w-full sm:w-auto bg-blue-600 text-white font-bold py-3 px-8 rounded-lg hover:bg-blue-700 shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+        Generate PowerPoint
+      </button>
+    </div>
+
+    <!-- Message Area for alerts -->
+    <div id="messageArea" class="mt-4 text-center text-sm"></div>
+
+  </div>
 
   <script>
-    document.getElementById("uploadDocx").addEventListener("change", function (event) {
+    // --- DOM Element References ---
+    const outlineTextArea = document.getElementById("outlineText");
+    const docxUploader = document.getElementById("uploadDocx");
+    const messageArea = document.getElementById("messageArea");
+
+    // --- Event Listener for DOCX file upload ---
+    docxUploader.addEventListener("change", function (event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
       const reader = new FileReader();
       reader.onload = function () {
         mammoth.extractRawText({ arrayBuffer: reader.result })
-          .then(function (result) {
-            document.getElementById("outlineText").value = result.value;
+          .then(result => {
+            outlineTextArea.value = result.value;
+            displayMessage('Successfully imported text from .docx file.', 'success');
+          })
+          .catch(err => {
+            displayMessage('Error reading .docx file. Please check the file and try again.', 'error');
+            console.error(err);
           });
       };
-      reader.readAsArrayBuffer(event.target.files[0]);
+      reader.readAsArrayBuffer(file);
     });
 
-    function getFirstSlideContent() {
-      const text = document.getElementById("outlineText").value;
-      if (!text.trim()) {
-        alert("Please paste text or upload a file.");
-        return null;
-      }
-      const logoUrl = "https://beadbeed3000.github.io/slidebot/assets/logo.png";
-      const slideBreakRegex = /^([IVXLCDM]+\.|[A-Z]\.)\s+(.*)$/gm;
-      let matches = [];
-      let match;
-      while ((match = slideBreakRegex.exec(text)) !== null) {
-        matches.push({
-          full: match[0],
-          clean: match[2].trim(),
-          index: match.index,
+    /**
+     * Displays a message to the user.
+     * @param {string} text - The message to display.
+     * @param {'success' | 'error' | 'info'} type - The type of message.
+     */
+    function displayMessage(text, type = 'info') {
+        messageArea.textContent = text;
+        if (type === 'error') {
+            messageArea.className = 'mt-4 text-center text-sm text-red-600';
+        } else if (type === 'success') {
+            messageArea.className = 'mt-4 text-center text-sm text-green-600';
+        } else {
+            messageArea.className = 'mt-4 text-center text-sm text-gray-500';
+        }
+        // Clear message after 5 seconds
+        setTimeout(() => { messageArea.textContent = ''; }, 5000);
+    }
+
+    /**
+     * Auto-split slides based on max bullets per slide
+     */
+    function autoSplitSlides(slides, maxBullets) {
+      if (maxBullets === 999) return slides; // No limit
+      
+      const splitSlides = [];
+      
+      slides.forEach(slide => {
+        if (slide.content.length <= maxBullets) {
+          splitSlides.push(slide);
+        } else {
+          // Split into multiple slides
+          for (let i = 0; i < slide.content.length; i += maxBullets) {
+            const chunk = slide.content.slice(i, i + maxBullets);
+            const partNumber = Math.floor(i / maxBullets) + 1;
+            const totalParts = Math.ceil(slide.content.length / maxBullets);
+            
+            splitSlides.push({
+              title: totalParts > 1 ? `${slide.title} (${partNumber}/${totalParts})` : slide.title,
+              content: chunk
+            });
+          }
+        }
+      });
+      
+      return splitSlides;
+    }
+
+    /**
+     * Get template styles based on selected template
+     */
+    function getTemplateStyles(templateName) {
+      const templates = {
+        default: {
+          background: 'F8FAFC',
+          titleColor: '0f172a',
+          contentColor: '334155',
+          titleSize: 28,
+          contentSize: 18,  // Reduced from 20
+          footerColor: '0F60AD',
+          titleY: 0.5,
+          contentY: 1.4,
+          bulletIndent: 0.3,
+          lineSpacing: 56  // Increased spacing significantly
+        },
+        minimal: {
+          background: 'FFFFFF',
+          titleColor: '1f2937',
+          contentColor: '4b5563',
+          titleSize: 26,
+          contentSize: 16,  // Reduced from 18
+          footerColor: '6b7280',
+          titleY: 0.4,
+          contentY: 1.3,
+          bulletIndent: 0.2,
+          lineSpacing: 52
+        },
+        corporate: {
+          background: 'f9fafb',
+          titleColor: '1e40af',
+          contentColor: '1f2937',
+          titleSize: 32,
+          contentSize: 20,  // Reduced from 22
+          footerColor: '1e40af',
+          titleY: 0.5,
+          contentY: 1.4,
+          bulletIndent: 0.4,
+          lineSpacing: 60
+        },
+        academic: {
+          background: 'fefefe',
+          titleColor: '7c2d12',
+          contentColor: '44403c',
+          titleSize: 26,
+          contentSize: 17,  // Reduced from 19
+          footerColor: '7c2d12',
+          titleY: 0.5,
+          contentY: 1.3,
+          bulletIndent: 0.25,
+          lineSpacing: 54
+        }
+      };
+      
+      return templates[templateName] || templates.default;
+    }
+
+    /**
+     * Create a slide with the selected template
+     */
+    function createSlideWithTemplate(pptx, slideData, template) {
+      const slide = pptx.addSlide();
+      slide.background = { color: template.background };
+
+      // Add Title with better positioning
+      slide.addText(slideData.title, {
+        x: 0.8, y: template.titleY, w: '85%', h: 1.2, 
+        fontSize: template.titleSize, 
+        bold: true, 
+        color: template.titleColor,
+        align: 'left'
+      });
+
+      // Add Body Content with improved formatting
+      if (slideData.content.length > 0) {
+        // Process each bullet point individually for better control
+        slideData.content.forEach((bullet, index) => {
+          const yPosition = template.contentY + (index * (template.lineSpacing / 72)); // Convert to inches
+          
+          slide.addText(`• ${bullet}`, {
+            x: 0.8 + template.bulletIndent, 
+            y: yPosition, 
+            w: '78%',  // Slightly reduced width to prevent overflow
+            h: 0.8,   // Increased height for each bullet
+            fontSize: template.contentSize, 
+            color: template.contentColor,
+            align: 'left',
+            valign: 'top',
+            wrap: true  // Enable text wrapping
+          });
         });
       }
-      if (matches.length === 0) {
-        alert("No slide headings found. Use Roman numerals or capital letters + . for slide breaks.");
-        return null;
-      }
-      // Get content for first heading
-      const start = matches[0].index + matches[0].full.length;
-      const end = matches[1] ? matches[1].index : text.length;
-      const content = text.substring(start, end).trim();
-      // Only use non-heading lines as bullets
-      const bullets = content.split('\n').map(l => l.trim()).filter(Boolean).filter(l => !/^([IVXLCDM]+\.|[A-Z]\.)\s+/.test(l));
-      return { title: matches[0].clean, bullets: bullets, logoUrl: logoUrl };
+
+      // Add a subtle divider line under the title
+      slide.addShape(pptx.ShapeType.line, {
+        x: 0.8, y: template.titleY + 0.7, w: 8.5, h: 0,  // Adjusted line position
+        line: { color: template.titleColor, width: 2 }
+      });
+
+      // Add footer elements with better styling
+      slide.addShape(pptx.ShapeType.rect, {
+          x: 0, y: '92%', w: '100%', h: '8%',
+          fill: { color: template.footerColor }
+      });
+      
+      // Add page number (optional enhancement)
+      slide.addText(`${slideData.slideNumber || ''}`, {
+        x: '88%', y: '93%', w: '8%', h: '6%',
+        fontSize: 12, color: 'FFFFFF', align: 'center'
+      });
+      
+      slide.addImage({
+          path: "https://beadbeed3000.github.io/slidebot/assets/logo.png",
+          x: '92%', y: '92.5%', w: '5%', h: '7%'
+      });
+
+      return slide;
+    }
+    function cleanBulletText(text) {
+      return text
+        .replace(/^\*\*(.+?)\*\*/, '$1') // Remove bold markdown
+        .replace(/^[A-Z]\.\s*/, '') // Remove letter prefixes like "A. "
+        .replace(/^-\s*/, '') // Remove dash prefixes
+        .replace(/^\s*\*\s*/, '') // Remove asterisk prefixes
+        .trim();
     }
 
-    function previewFirstSlide() {
-      const slide = getFirstSlideContent();
-      if (!slide) return;
-      showPreview(slide.title, slide.bullets, slide.logoUrl);
-    }
-
+    /**
+     * The main function to generate the PowerPoint presentation.
+     */
     function generatePresentation() {
-      const text = document.getElementById("outlineText").value;
+      const text = outlineTextArea.value;
       if (!text.trim()) {
-        alert("Please paste text or upload a file.");
+        displayMessage("Please paste an outline or upload a file first.", "error");
         return;
       }
+
+      displayMessage("Generating your presentation...", "info");
+
       const pptx = new PptxGenJS();
-      const logoUrl = "https://beadbeed3000.github.io/slidebot/assets/logo.png";
-      const slideBreakRegex = /^([IVXLCDM]+\.|[A-Z]\.)\s+(.*)$/gm;
-      let matches = [];
-      let match;
-      while ((match = slideBreakRegex.exec(text)) !== null) {
-        matches.push({
-          full: match[0],
-          clean: match[2].trim(),
-          index: match.index,
-        });
-      }
-      matches.push({ index: text.length });
-      let previewed = false;
-      for (let i = 0; i < matches.length - 1; i++) {
-        const start = matches[i].index + matches[i].full.length;
-        const end = matches[i + 1].index;
-        let content = text.substring(start, end).trim();
+      
+      // Get user preferences
+      const maxBullets = parseInt(document.getElementById('maxBullets').value);
+      const templateName = document.getElementById('slideTemplate').value;
+      const showPageNumbers = document.getElementById('showPageNumbers').checked;
+      const template = getTemplateStyles(templateName);
 
-        // Only use non-heading lines as bullets!
-        const bullets = content
-          .split('\n')
-          .map(l => l.trim())
-          .filter(Boolean)
-          .filter(l => !/^([IVXLCDM]+\.|[A-Z]\.)\s+/.test(l));
+      // Split on Roman numerals, but be more flexible with spacing and formatting
+      const lines = text.split(/\r?\n/);
+      const slides = [];
+      let currentSlide = null;
 
-        const slide = pptx.addSlide();
-        slide.background = { color: 'F1F1F1' };
-        slide.addText(matches[i].clean, {
-          x: 0.5, y: 0.3, fontSize: 28, bold: true, color: '0F60AD',
-          align: 'center', w: '90%', h: 1
-        });
-        if (bullets.length > 0) {
-          slide.addText(bullets, {
-            x: 0.75, y: 1.2, w: 8.5, h: 5.5, fontSize: 18, bullet: true,
-            color: '333333', fontFace: 'Arial'
-          });
-        }
-        // Green bar at bottom
-        slide.addShape(pptx.ShapeType.rect, {
-          x: 0, y: 5.0, w: '100%', h: 0.7,
-          fill: { color: '71AC4A' }
-        });
-        // Logo (bottom-right)
-        slide.addImage({
-          path: logoUrl,
-          x: 9, y: 5, w: 0.7, h: 0.7
-        });
-        // Show preview for first slide only
-        if (!previewed) {
-          showPreview(matches[i].clean, bullets, logoUrl);
-          previewed = true;
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        
+        // Check if this line starts a new slide (Roman numeral pattern)
+        const romanMatch = line.match(/^(\*\*)?([IVXLCDM]+)\.\s*(.+?)(\*\*)?$/);
+        
+        if (romanMatch) {
+          // Save previous slide if it exists
+          if (currentSlide) {
+            slides.push(currentSlide);
+          }
+          
+          // Start new slide
+          currentSlide = {
+            title: romanMatch[3].replace(/^\*\*(.+?)\*\*$/, '$1'), // Remove bold formatting
+            content: []
+          };
+        } else if (currentSlide && line) {
+          // This is content for the current slide
+          // Skip empty lines and lines that are just markdown headers
+          if (line && !line.match(/^#+\s/)) {
+            const cleanedLine = cleanBulletText(line);
+            if (cleanedLine && cleanedLine.length > 3) {
+              currentSlide.content.push(cleanedLine);
+            }
+          }
         }
       }
-      pptx.writeFile("Generated_Presentation.pptx");
-    }
+      
+      // Don't forget the last slide
+      if (currentSlide) {
+        slides.push(currentSlide);
+      }
+      
+      if (slides.length === 0) {
+        displayMessage("No slide titles found. Use Roman numerals (I., II., etc.) to start each slide.", "error");
+        return;
+      }
 
-    // HTML preview of the first slide under the button
-    function showPreview(title, bullets, logoUrl) {
-      const slideHTML = `
-        <div style="background:#f1f1f1; border-radius:20px; box-shadow:0 2px 10px #bbb; padding:2em 2em 1.7em 2em; width:900px; max-width:100%; min-height:420px; position:relative; font-family:sans-serif;">
-          <div style="text-align:center; font-size:2em; font-weight:bold; color:#0F60AD; margin-bottom:1.2em;">${title}</div>
-          <ul style="font-size:1.25em; color:#222; margin-bottom:8em;">
-            ${bullets.map(bullet => `<li>${bullet}</li>`).join("")}
-          </ul>
-          <div style="position:absolute; left:0; right:0; bottom:30px; height:56px; background:#71AC4A; border-radius:6px;"></div>
-          <img src="${logoUrl}" alt="Logo" style="position:absolute; right:8px; bottom:24px; width:70px; height:70px; background:#fff; border-radius:50%; box-shadow:0 0 4px #999; object-fit:contain;"/>
-        </div>
-      `;
-      document.getElementById('slidePreview').innerHTML = slideHTML;
+      // Auto-split slides if needed
+      const finalSlides = autoSplitSlides(slides, maxBullets);
+
+      // Create slides in PowerPoint with selected template
+      finalSlides.forEach((slideData, index) => {
+        console.log(`Slide ${index + 1}: "${slideData.title}"`);
+        console.log(`Content lines: ${slideData.content.length}`);
+        console.log('Content:', slideData.content);
+        
+        // Add slide number for reference
+        slideData.slideNumber = index + 1;
+        
+        createSlideWithTemplate(pptx, slideData, template, showPageNumbers);
+      });
+
+      // Save the file
+      pptx.writeFile({ fileName: "Generated_Presentation.pptx" })
+        .then(fileName => {
+          displayMessage(`Successfully generated ${fileName} with ${finalSlides.length} slides (${slides.length} original sections)`, 'success');
+        })
+        .catch(err => {
+          displayMessage('An error occurred while creating the file.', 'error');
+          console.error(err);
+        });
     }
   </script>
 </body>
