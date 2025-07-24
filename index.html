@@ -1,77 +1,109 @@
-function generatePresentation() {
-  const text = document.getElementById("outlineText").value;
-  if (!text.trim()) {
-    alert("Please paste text or upload a file.");
-    return;
-  }
-  const pptx = new PptxGenJS();
-  const logoUrl = "https://beadbeed3000.github.io/slidebot/assets/logo.png";
-// ... then, in addImage:
-slide.addImage({
-  path: logoUrl,
-  x: 9.2, y: 6.5, w: 1.2, h: 0.6
-});
-
-
-  // This regex finds "I.", "II.", ... or "A.", "B.", ... at the start of a line (case sensitive)
-  const slideBreakRegex = /^([IVXLCDM]+\.|[A-Z]\.)\s+(.*)/gm;
-
-  let match;
-  let slides = [];
-  let lastIndex = 0;
-  let currentSlide = null;
-
-  while ((match = slideBreakRegex.exec(text)) !== null) {
-    if (currentSlide) {
-      currentSlide.content = text.substring(lastIndex, match.index).trim();
-      slides.push(currentSlide);
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Slidebot - PowerPoint Generator</title>
+  <script src="https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs/dist/pptxgen.bundle.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.7.0/mammoth.browser.min.js"></script>
+  <style>
+    body { font-family: sans-serif; background: #f9f9f9; padding: 2em; }
+    h2 { color: #0F60AD; }
+    textarea { width: 100%; min-height: 180px; margin-bottom: 1em; font-size: 1em; }
+    input[type="file"] { margin-bottom: 1em; }
+    button { padding: 12px 32px; font-size: 1.1em; background: #0F60AD; color: #fff; border: none; border-radius: 7px; cursor: pointer; }
+    button:hover { background: #276fd0; }
+    .logo-preview { margin-bottom: 1em; max-width: 200px; }
+    @media (max-width: 600px) {
+      body { padding: 0.5em; }
+      .logo-preview { max-width: 100px; }
     }
-    currentSlide = {
-      title: match[0].trim(),
-      cleanTitle: match[2].trim(),
-      start: match.index,
-      end: slideBreakRegex.lastIndex,
-      content: "" // to be filled in next loop
-    };
-    lastIndex = match.index + match[0].length;
-  }
-  if (currentSlide) {
-    currentSlide.content = text.substring(lastIndex).trim();
-    slides.push(currentSlide);
-  }
+  </style>
+</head>
+<body>
+  <img src="assets/logo.png" alt="Logo" class="logo-preview"/>
+  <h2>Slidebot: Generate a PowerPoint from an Outline</h2>
+  <p>Paste your outline using Roman numerals and/or capital letters for slide breaks (e.g., <strong>I.</strong>, <strong>A.</strong>, etc.). Or upload a .docx file.</p>
+  <textarea id="outlineText" placeholder="Example:
+I. Introduction
+- Welcome!
+A. What is AI?
+- AI means...
+II. Next Section
+..."></textarea><br/>
+  <input type="file" id="uploadDocx" accept=".docx"/><br/>
+  <button onclick="generatePresentation()">Generate PowerPoint</button>
 
-  // Now, generate slides
-  slides.forEach(slideObj => {
-    const slide = pptx.addSlide();
-    slide.background = { color: 'F1F1F1' };
-    slide.addText(slideObj.cleanTitle, {
-      x: 0.5, y: 0.3, fontSize: 28, bold: true, color: '0F60AD',
-      align: 'center', w: '90%', h: 1
+  <script>
+    document.getElementById("uploadDocx").addEventListener("change", function (event) {
+      const reader = new FileReader();
+      reader.onload = function () {
+        mammoth.extractRawText({ arrayBuffer: reader.result })
+          .then(function (result) {
+            document.getElementById("outlineText").value = result.value;
+          });
+      };
+      reader.readAsArrayBuffer(event.target.files[0]);
     });
 
-    // Split content into bullets (split by newline, remove empty lines)
-    const bullets = slideObj.content
-      .split('\n')
-      .map(line => line.trim())
-      .filter(Boolean);
+    function generatePresentation() {
+      const text = document.getElementById("outlineText").value;
+      if (!text.trim()) {
+        alert("Please paste text or upload a file.");
+        return;
+      }
+      const pptx = new PptxGenJS();
+      const logoUrl = "https://beadbeed3000.github.io/slidebot/assets/logo.png";
 
-    if (bullets.length > 0) {
-      slide.addText(bullets, {
-        x: 0.75, y: 1.2, w: 8.5, h: 5.5, fontSize: 18, bullet: true,
-        color: '333333', fontFace: 'Arial'
-      });
+      // Find headings and their indices (Roman numerals or single capital letters, both with dot)
+      const slideBreakRegex = /^([IVXLCDM]+\.|[A-Z]\.)\s+(.*)$/gm;
+      let matches = [];
+      let match;
+
+      while ((match = slideBreakRegex.exec(text)) !== null) {
+        matches.push({
+          full: match[0],
+          clean: match[2].trim(),
+          index: match.index,
+        });
+      }
+
+      // Add a dummy match at the end to help extract last section
+      matches.push({ index: text.length });
+
+      for (let i = 0; i < matches.length - 1; i++) {
+        const start = matches[i].index + matches[i].full.length;
+        const end = matches[i + 1].index;
+        const content = text.substring(start, end).trim();
+
+        const slide = pptx.addSlide();
+        slide.background = { color: 'F1F1F1' };
+        slide.addText(matches[i].clean, {
+          x: 0.5, y: 0.3, fontSize: 28, bold: true, color: '0F60AD',
+          align: 'center', w: '90%', h: 1
+        });
+
+        const bullets = content.split('\n').map(l => l.trim()).filter(Boolean);
+        if (bullets.length > 0) {
+          slide.addText(bullets, {
+            x: 0.75, y: 1.2, w: 8.5, h: 5.5, fontSize: 18, bullet: true,
+            color: '333333', fontFace: 'Arial'
+          });
+        }
+
+        slide.addShape(pptx.ShapeType.rect, {
+          x: 0, y: 6.7, w: '100%', h: 0.3,
+          fill: { color: '71AC4A' }
+        });
+
+        slide.addImage({
+          path: logoUrl,
+          x: 9.2, y: 6.5, w: 1.2, h: 0.6
+        });
+      }
+
+      pptx.writeFile("Generated_Presentation.pptx");
     }
-
-    slide.addShape(pptx.ShapeType.rect, {
-      x: 0, y: 6.7, w: '100%', h: 0.3,
-      fill: { color: '71AC4A' }
-    });
-
-    slide.addImage({
-      path: logoUrl,
-      x: 9.2, y: 6.5, w: 1.2, h: 0.6
-    });
-  });
-
-  pptx.writeFile("Generated_Presentation.pptx");
-}
+  </script>
+</body>
+</html>
