@@ -5,7 +5,13 @@ function generatePresentation() {
     return;
   }
   const pptx = new PptxGenJS();
-  const logoUrl = "https://kvec.theholler.org/wp-content/uploads/2023/12/wgKVEC-300x240.png";
+  const logoUrl = "https://beadbeed3000.github.io/slidebot/assets/logo.png";
+// ... then, in addImage:
+slide.addImage({
+  path: logoUrl,
+  x: 9.2, y: 6.5, w: 1.2, h: 0.6
+});
+
 
   // This regex finds "I.", "II.", ... or "A.", "B.", ... at the start of a line (case sensitive)
   const slideBreakRegex = /^([IVXLCDM]+\.|[A-Z]\.)\s+(.*)/gm;
