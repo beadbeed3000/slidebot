@@ -3,91 +3,32 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Slide Generator</title>
+  <title>Enhanced Slide Generator</title>
+  <link rel="stylesheet" href="styles.css">
   <script src="https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs/dist/pptxgen.bundle.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.7.0/mammoth.browser.min.js"></script>
-  <style>
-    body { font-family: sans-serif; background: #f9f9f9; padding: 2em; }
-    textarea { width: 100%; height: 200px; margin-bottom: 1em; }
-    input[type="file"] { margin-bottom: 1em; }
-    button { padding: 10px 20px; font-size: 1em; cursor: pointer; }
-  </style>
 </head>
 <body>
   <h2>Slide Generator</h2>
-  <textarea id="outlineText" placeholder="Paste your outline here..."></textarea><br />
-  <input type="file" id="uploadDocx" accept=".docx" /><br />
-  <button onclick="generatePresentation()">Generate PowerPoint</button>
 
-  <script>
-    document.getElementById("uploadDocx").addEventListener("change", function (event) {
-      const reader = new FileReader();
-      reader.onload = function (event) {
-        mammoth.extractRawText({ arrayBuffer: reader.result })
-          .then(function (result) {
-            document.getElementById("outlineText").value = result.value;
-          });
-      };
-      reader.readAsArrayBuffer(event.target.files[0]);
-    });
+  <!-- Customization Controls -->
+  <section id="customization">
+    <fieldset>
+      <legend>Theme & Output Settings</legend>
+      <label>Background: <input type="color" id="bgColor" value="#F1F1F1" aria-label="Background color picker"></label>
+      <label>Text Color: <input type="color" id="textColor" value="#0F60AD" aria-label="Text color picker"></label>
+      <label>Bullet Size: <input type="number" id="bulletSize" value="18" min="10" max="36" aria-label="Bullet font size"></label>
+      <label>Logo URL: <input type="url" id="logoUrl" value="https://kvec.theholler.org/wp-content/uploads/2023/12/wgKVEC-300x240.png" aria-label="Logo URL"></label>
+      <label>Filename: <input type="text" id="fileName" value="Generated_Presentation.pptx" aria-label="Output filename"></label>
+    </fieldset>
+  </section>
 
-    function generatePresentation() {
-      const text = document.getElementById("outlineText").value;
-      if (!text.trim()) {
-        alert("Please paste text or upload a file.");
-        return;
-      }
+  <textarea id="outlineText" placeholder="Paste your outline here..." aria-label="Outline text"></textarea><br />
+  <input type="file" id="uploadDocx" accept=".docx" aria-label="Upload DOCX file"><br />
+  <button id="generateBtn">Generate PowerPoint</button>
 
-      const pptx = new PptxGenJS();
-      const logoUrl = "https://kvec.theholler.org/wp-content/uploads/2023/12/wgKVEC-300x240.png";
+  <div id="spinner" hidden>Generating slides…</div>
 
-      const lines = text.split(/\n+/);
-      let slide = null;
-      let title = '';
-      let bullets = [];
-
-      function finalizeSlide() {
-        if (slide && (title || bullets.length)) {
-          slide.background = { color: 'F1F1F1' };
-          if (title) {
-            slide.addText(title, {
-              x: 0.5, y: 0.3, fontSize: 28, bold: true, color: '0F60AD', 
-              align: 'center', w: '90%', h: 1
-            });
-          }
-          if (bullets.length > 0) {
-            slide.addText(bullets, {
-              x: 0.75, y: 1.2, w: 8.5, h: 5.5, fontSize: 18, bullet: true, 
-              color: '333333', fontFace: 'Arial'
-            });
-          }
-          slide.addShape(pptx.ShapeType.rect, {
-            x: 0, y: 6.7, w: '100%', h: 0.3,
-            fill: { color: '71AC4A' }
-          });
-          slide.addImage({
-            data: logoUrl,
-            x: 9.2, y: 6.5, w: 1.2, h: 0.6
-          });
-        }
-      }
-
-      lines.forEach(line => {
-        const trimmed = line.trim();
-        if (/^[IVXLCDM]+\./.test(trimmed)) {
-          finalizeSlide();
-          slide = pptx.addSlide();
-          title = trimmed.replace(/^[IVXLCDM]+\.\s*/, '');
-          bullets = [];
-        } else if (/^[A-Z]\./.test(trimmed)) {
-          bullets.push(trimmed.replace(/^[A-Z]\.\s*/, ''));
-        } else if (trimmed.length > 0) {
-          bullets.push(trimmed);
-        }
-      });
-      finalizeSlide();
-      pptx.writeFile("Generated_Presentation.pptx");
-    }
-  </script>
+  <script src="scripts.js"></script>
 </body>
 </html>
